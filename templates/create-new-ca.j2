@@ -1,0 +1,47 @@
+#!/bin/bash
+# Create Root CA
+ROOT_KEY="{{ ca_root_config.ca_default.private_key }}"
+ROOT_CERT="{{ ca_root_config.ca_default.certificate }}"
+ROOT_CA="{{ ca_root_ca }}"
+INTER_KEY="{{ ca_inter_config.ca_default.private_key }}"
+INTER_CSR="{{ ca_inter_csr }}"
+INTER_CERT="{{ ca_inter_config.ca_default.certificate }}"
+INTER_CA="{{ ca_inter_ca }}"
+CA_CHAIN="{{ ca_chain_cert }}"
+
+set -e
+
+echo -e '\n\nAll passwords should be strong and unique.\n\n'
+echo 'Creating Root CA private key ...'
+if [ ! -f "${ROOT_KEY}" ]; then
+  openssl genrsa -aes256 -out "${ROOT_KEY}" 4096
+fi
+chmod 0400 "${ROOT_KEY}"
+
+echo 'Creating Root CA certificate ...'
+if [ ! -f "${ROOT_CERT}" ]; then
+  openssl req -config "${ROOT_CA}" -key "${ROOT_KEY}" -new -x509 -days 7300 -sha512 -extensions v3_ca -out "${ROOT_CERT}"
+fi
+chmod 444 "${ROOT_CERT}"
+openssl x509 -noout -text -in "${ROOT_CERT}"
+
+echo 'Creating Intermediate CA priate key ...'
+if [ ! -f "${INTER_KEY}" ]; then
+  openssl genrsa -aes256 -out "${INTER_KEY}" 4096
+fi
+chmod 0400 "${INTER_KEY}"
+
+echo 'Creating Intermediate CA certificate ...'
+openssl req -config "${INTER_CA}" -new -sha512 -key "${INTER_KEY}" -out "${INTER_CSR}"
+openssl ca -config "${ROOT_CA}" -extensions v3_intermediate_ca -days 3650 -notext -md sha512 -in "${INTER_CSR}" -out "${INTER_CERT}"
+chmod 444 "${INTER_CERT}"
+openssl x509 -noout -text -in "${INTER_CERT}"
+openssl verify -CAfile "${ROOT_CERT}" "${INTER_CERT}"
+
+echo 'Creating CA Chain of Trust ...'
+cat "${INTER_CERT}" "${ROOT_CERT}" > "${CA_CHAIN}"
+chmod 444 "${CA_CHAIN}"
+chown {{ ca_user }}:{{ ca_group }} "${CA_CHAIN}"
+echo 'Done.'
+
+echo '██████████▶ Set calendar reminder a few days before expiry. ◀██████████'

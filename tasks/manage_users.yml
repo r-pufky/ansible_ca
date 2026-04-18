@@ -1,0 +1,48 @@
+---
+###############################################################################
+# Manager CA Users
+###############################################################################
+# Check if user exists and create if enabled.
+#
+# Args:
+#   ca_user: string ca username.
+#   ca_group: string ca group.
+#   ca_create_user: boolean true to create role default user.
+#   ca_default_user: dict containing builitin.user options for ca.
+#   ca_default_group: dict containing builitin.group options for ca.
+
+- name: 'manage users | confirm user exists'
+  ansible.builtin.command: 'id {{ ca_user }}'
+  register: _ca_user_exists
+  changed_when: _ca_user_exists.rc > 0
+  failed_when: false
+
+- name: 'manage users | confirm group exists'
+  ansible.builtin.command: 'groups {{ ca_group }}'
+  register: _ca_group_exists
+  changed_when: _ca_group_exists.rc > 0
+  failed_when: false
+
+- name: 'manage users | create ca group'
+  ansible.builtin.group:
+    name:  '{{ ca_default_group.name }}'
+    gid:   '{{ ca_default_group.gid }}'
+    state: 'present'
+  when: ca_create_user and _ca_group_exists.rc != 0
+
+- name: 'manage users | create ca user (logins disabled)'
+  ansible.builtin.user:
+    name:            '{{ ca_default_user.name }}'
+    group:           '{{ ca_default_user.group }}'
+    groups:          '{{ ca_default_user.groups }}'
+    uid:             '{{ ca_default_user.uid }}'
+    shell:           '{{ ca_default_user.shell }}'
+    home:            '{{ ca_default_user.home }}'
+    create_home:     '{{ ca_default_user.create_home }}'
+    password:        '{{ ca_default_user.password }}'
+    password_lock:   '{{ ca_default_user.password_lock }}'
+    update_password: '{{ ca_default_user.update_password }}'
+    expires:         '{{ ca_default_user.expires }}'
+    system:          '{{ ca_default_user.system }}'
+    state:           'present'
+  when: ca_create_user and _ca_user_exists.rc != 0

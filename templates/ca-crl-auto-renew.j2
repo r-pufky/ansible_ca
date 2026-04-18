@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# Recreate CRL lists automatically within a week of any expiration.
+#
+ROOT_EXPIRY_TIMESTAMP=`openssl crl -in "{{ ca_root_crl }}" -nextupdate | head -1 | cut -d '=' -f2 | date +%s -f -`
+INTER_EXPIRY_TIMESTAMP=`openssl crl -in "{{ ca_inter_crl }}" -nextupdate | head -1 | cut -d '=' -f2 | date +%s -f -`
+CHAIN_EXPIRY_TIMESTAMP=`openssl crl -in "{{ ca_chain_crl }}" -nextupdate | head -1 | cut -d '=' -f2 | date +%s -f -`
+DATE=`date +%s`
+WEEK=604800
+
+renew=0
+if (( ($ROOT_EXPIRY_TIMESTAMP - $DATE) < $WEEK )); then
+  renew=1
+fi
+if (( ($INTER_EXPIRY_TIMESTAMP - $DATE) < $WEEK )); then
+  renew=1
+fi
+if (( ($CHAIN_EXPIRY_TIMESTAMP - $DATE) < $WEEK )); then
+  renew=1
+fi
+
+if (( $renew == 1 )); then
+  "{{ ca_dir }}/regen-crl-cert"
+fi

@@ -1,0 +1,60 @@
+#!/bin/bash
+# Generate machine certificates and a CSR.
+CA_DIR="{{ ca_repo }}"
+INTER_CA="{{ ca_inter_ca }}"
+INTER_CA_GPG="{{ ca_inter_config.ca.gpg }}"
+CA_CHAIN="{{ ca_chain_cert }}"
+CURRENT_DATE=$(date --iso-8601)
+
+
+set -e
+
+# Be sure to add /X= for default values. (see -subj).
+COUNTRY='/C=XX'
+STATE='/ST=XX'
+LOCALITY='/L=XX'
+ORG_NAME='/O='
+ORG_UNIT='/OU=machine'
+COMMON_NAME='/CN='
+EMAIL='/emailAddress=XX'
+
+if [ -z "$1" ]; then
+    echo "$(basename "$0") [machine id]"
+    exit 1
+else
+  MACHINE=$1
+  ORG_NAME="/O=${MACHINE}"
+  COMMON_NAME="/CN=${MACHINE}.machine"
+  MACHINE_KEY="${CA_DIR}/inter/private/${CURRENT_DATE}-${MACHINE}.key.pem"
+  MACHINE_CSR="${CA_DIR}/inter/csr/${CURRENT_DATE}-${MACHINE}.csr.pem"
+  MACHINE_CERT="${CA_DIR}/inter/certs/${CURRENT_DATE}-${MACHINE}.cert.pem"
+  MACHINE_PFX="${CA_DIR}/pfx/${CURRENT_DATE}-${MACHINE}.pfx"
+  if [ -f "${MACHINE_KEY}" ]; then
+    echo "Aborting: ${MACHINE_KEY} exists."
+    exit 2
+  fi
+fi
+
+echo -e '\nGenerating Machine Certificate ...'
+openssl genrsa -out "${MACHINE_KEY}" 4096
+chmod 0400 "${MACHINE_KEY}"
+
+echo -e '\nCreating CSR ...'
+openssl req -config "${INTER_CA}" -key "${MACHINE_KEY}" -new -sha512 -out "${MACHINE_CSR}" -subj "${COUNTRY}${STATE}${LOCALITY}${ORG_NAME}${ORG_UNIT}${COMMON_NAME}${EMAIL}"
+
+echo -e '\nSigning CSR ...'
+openssl ca -config "${INTER_CA}" -extensions machine_cert -days 375 -notext -md sha512 -in "${MACHINE_CSR}" -out "${MACHINE_CERT}" -passin file:<( gpg --decrypt "${INTER_CA_GPG}" )
+chmod 444 "${MACHINE_CERT}"
+openssl x509 -noout -text -in "${MACHINE_CERT}"
+openssl verify -CAfile "${CA_CHAIN}" "${MACHINE_CERT}"
+if [ $? -ne 0 ]; then
+  echo "Aborting: ${MACHINE_CERT} failed CA Chain validation."
+  exit 3
+fi
+
+echo -e "\nExporting ${MACHINE} PKCS#12 pfx ..."
+openssl pkcs12 -export -out "${MACHINE_PFX}" -inkey "${MACHINE_KEY}" -in "${MACHINE_CERT}" -certfile "${CA_CHAIN}"
+chmod 0400 "${MACHINE_PFX}"
+echo "Machine certificate: ${MACHINE_PFX}"
+echo '██████████▶ Set calendar reminder a few days before expiry. ◀██████████'
+echo 'Done.'

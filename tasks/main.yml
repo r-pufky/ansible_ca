@@ -1,0 +1,201 @@
+---
+###############################################################################
+# CA (Certification Authority) Certificates
+###############################################################################
+# Manage CA certificates and intermediate / generated certificates.
+#
+# Args:
+#   ca_default_packages: list of packages for CA install.
+#
+# Reference:
+# * https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
+# * https://jamielinux.com/docs/openssl-certificate-authority/create-the-intermediate-pair.html
+
+- ansible.builtin.include_tasks: manage_users.yml
+
+- name: 'set ca directories'
+  ansible.builtin.file:
+    path:  '{{ item }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0700
+    state: 'directory'
+  loop:
+    - '{{ ca_dir }}'
+    - '{{ ca_backup_dir }}'
+    - '{{ ca_repo }}'
+    - '{{ ca_repo_root }}'
+    - '{{ ca_repo_root }}/certs'
+    - '{{ ca_repo_root }}/crl'
+    - '{{ ca_repo_root }}/newcerts'
+    - '{{ ca_repo_root }}/private'
+    - '{{ ca_repo_inter }}'
+    - '{{ ca_repo_inter }}/certs'
+    - '{{ ca_repo_inter }}/crl'
+    - '{{ ca_repo_inter }}/csr'
+    - '{{ ca_repo_inter }}/newcerts'
+    - '{{ ca_repo_inter }}/private'
+    - '{{ ca_repo_chain }}'
+    - '{{ ca_repo_pfx }}'
+
+- name: 'set ca chain directory'
+  ansible.builtin.file:
+    path:  '{{ ca_repo_chain }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0770
+    state: 'directory'
+
+- name: 'install dependencies'
+  ansible.builtin.apt:
+    name:  '{{ ca_default_packages }}'
+    state: 'latest'
+    update_cache: true
+
+- name: 'install virtualization dependencies'
+  ansible.builtin.apt:
+    name:  '{{ ca_default_virtualization_packages }}'
+    state: 'latest'
+    update_cache: true
+  when: ansible_virtualization_type|lower not in ['na', '']
+
+- name: 'set default ca index'
+  ansible.builtin.copy:
+    dest:    '{{ item }}'
+    owner:   '{{ ca_user }}'
+    group:   '{{ ca_group }}'
+    mode:    0600
+    force:   false
+    content: ''
+  loop:
+    - '{{ ca_repo_root }}/index.txt'
+    - '{{ ca_repo_inter }}/index.txt'
+
+- name: 'set default ca index attributes'
+  ansible.builtin.copy:
+    dest:    '{{ item }}'
+    owner:   '{{ ca_user }}'
+    group:   '{{ ca_group }}'
+    mode:    0600
+    force:   false
+    content: 'unique_subject = no'
+  loop:
+    - '{{ ca_repo_root }}/index.txt.attr'
+    - '{{ ca_repo_inter }}/index.txt.attr'
+
+- name: 'set default ca serial numbers (1000)'
+  ansible.builtin.copy:
+    dest:    '{{ item }}'
+    owner:   '{{ ca_user }}'
+    group:   '{{ ca_group }}'
+    mode:    0600
+    force:   false
+    content: 1000
+  loop:
+    - '{{ ca_repo_root }}/serial'
+    - '{{ ca_repo_inter }}/serial'
+    - '{{ ca_repo_root }}/crlnumber'
+    - '{{ ca_repo_inter }}/crlnumber'
+
+- name: 'set ca gpg config'
+  ansible.builtin.copy:
+    src:   'gpg/'
+    dest:  '{{ ca_dir }}/gpg/'
+    mode:  0600
+    directory_mode: 0700
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+
+- name: 'set ca management scripts'
+  ansible.builtin.template:
+    src:   '{{ item }}'
+    dest:  '{{ ca_dir }}/{{ item.split(".")[0] }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0700
+  loop:
+    - 'create-new-ca.j2'
+    - 'delete-machine-cert.j2'
+    - 'gen-machine-cert.j2'
+    - 'regen-crl-cert.j2'
+    - 'revoke-machine-cert.j2'
+
+- name: 'set root ca private key'
+  ansible.builtin.template:
+    src:   'cert.pem.j2'
+    dest:  '{{ ca_root_config.ca_default.private_key }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0600
+  vars:
+    ca_key: '{{ ca_root_config.ca.private_key }}'
+  when: ca_root_config.ca.private_key|length > 0
+
+- name: 'set root ca current cert'
+  ansible.builtin.template:
+    src:   'cert.pem.j2'
+    dest:  '{{ ca_root_config.ca_default.certificate }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0600
+  vars:
+    ca_key: '{{ ca_root_config.ca.certificate }}'
+  when: ca_root_config.ca.certificate|length > 0
+
+- name: 'set root ca config'
+  ansible.builtin.template:
+    src:   'ca.j2'
+    dest:  '{{ ca_root_ca }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0600
+  vars:
+    config: '{{ ca_root_config }}'
+
+- name: 'set inter ca private key'
+  ansible.builtin.template:
+    src:   'cert.pem.j2'
+    dest:  '{{ ca_inter_config.ca_default.private_key }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0600
+  vars:
+    ca_key: '{{ ca_inter_config.ca.private_key }}'
+  when: ca_inter_config.ca.private_key|length > 0
+
+- name: 'set inter ca current cert'
+  ansible.builtin.template:
+    src:   'cert.pem.j2'
+    dest:  '{{ ca_inter_config.ca_default.certificate }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0600
+  vars:
+    ca_key: '{{ ca_inter_config.ca.certificate }}'
+  when: ca_inter_config.ca.certificate|length > 0
+
+- name: 'set inter ca config'
+  ansible.builtin.template:
+    src:   'ca.j2'
+    dest:  '{{ ca_inter_ca }}'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0600
+  vars:
+    config: '{{ ca_inter_config }}'
+
+- name: 'set ca backup'
+  ansible.builtin.template:
+    src:   'ca-backup.j2'
+    dest:  '/etc/cron.weekly/ca-backup'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0755
+
+- name: 'set ca crl auto-renew'
+  ansible.builtin.template:
+    src:   'ca-crl-auto-renew.j2'
+    dest:  '/etc/cron.daily/ca-crl-auto-renew'
+    owner: '{{ ca_user }}'
+    group: '{{ ca_group }}'
+    mode:  0755

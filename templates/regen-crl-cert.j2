@@ -1,0 +1,24 @@
+#!/bin/bash
+# Regenerate CRL certs.
+CA_DIR="{{ ca_repo }}"
+ROOT_CA="{{ ca_root_ca }}"
+ROOT_CRL="{{ ca_root_crl }}"
+ROOT_CA_GPG="{{ ca_root_config.ca.gpg }}"
+INTER_CA="{{ ca_inter_ca }}"
+INTER_CRL="{{ ca_inter_crl }}"
+INTER_CA_GPG="{{ ca_inter_config.ca.gpg }}"
+CA_CHAIN_CRL="{{ ca_chain_crl }}"
+
+set -e
+
+echo -e "\nRengerating CRL lists ..."
+openssl ca -config "${ROOT_CA}" -gencrl -out "${ROOT_CRL}" -passin file:<( gpg --decrypt "${ROOT_CA_GPG}" )
+openssl ca -config "${INTER_CA}" -gencrl -out "${INTER_CRL}" -passin file:<( gpg --decrypt "${INTER_CA_GPG}" )
+cat "${ROOT_CRL}" "${INTER_CRL}" > "${CA_CHAIN_CRL}"
+chmod 0440 "${CA_CHAIN_CRL}"
+chown {{ ca_user }}:{{ ca_group }} "${CA_CHAIN_CRL}"
+echo 'Done.'
+echo '██████████▶'
+echo 'Set calendar reminder a few days before CRLs expire. If not, certificate'
+echo 'authentication will stop working even with valid certs!'
+echo '██████████▶'

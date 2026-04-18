@@ -1,0 +1,45 @@
+#!/bin/bash
+# Revoke a machine certificate and update the CRL.
+CA_DIR="{{ ca_repo }}"
+INTER_CA="{{ ca_inter_ca }}"
+INTER_CRL="{{ ca_inter_crl }}"
+INTER_CA_GPG="{{ ca_inter_config.ca.gpg }}"
+ROOT_CA="{{ ca_root_ca }}"
+ROOT_CRL="{{ ca_root_crl }}"
+CA_CHAIN_CRL="{{ ca_chain_crl }}"
+
+set -e
+
+if [ -z "$1" ]; then
+    echo "$(basename "$0") [date]-[machine id]"
+    exit 1
+else
+  MACHINE=$1
+  MACHINE_CERT="${CA_DIR}/inter/certs/${MACHINE}.cert.pem"
+  if [ ! -f "${MACHINE_CERT}" ]; then
+    echo "Aborting: ${MACHINE_CERT} does not exist."
+    exit 2
+  fi
+fi
+
+if [ ! -f "${ROOT_CRL}" ]; then
+  echo "Root CRL list does not exist, creating ..."
+  openssl ca -config "${ROOT_CA}" -gencrl -out "${ROOT_CRL}"
+fi
+
+if [ ! -f "${INTER_CRL}" ]; then
+  echo "Intermediate CRL list does not exist, creating ..."
+  openssl ca -config "${INTER_CA}" -gencrl -out "${INTER_CRL}"
+fi
+
+echo -e "\nRevoking certificate: ${MACHINE} ..."
+openssl ca -config "${INTER_CA}" -revoke "${MACHINE_CERT}" -passin file:<( gpg --decrypt "${INTER_CA_GPG}" )
+echo "Updating CRL list ..."
+openssl ca -config "${INTER_CA}" -gencrl -out "${INTER_CRL}" -passin file:<( gpg --decrypt "${INTER_CA_GPG}" )
+echo "Packing ca-chain CRL list ..."
+cat "${ROOT_CRL}" "${INTER_CRL}" > "${CA_CHAIN_CRL}"
+chmod 0440 "${CA_CHAIN_CRL}"
+chown {{ ca_user }}:{{ ca_group }} "${CA_CHAIN_CRL}"
+
+echo "██████████▶ reload proxy ◀██████████"
+echo 'Done.'

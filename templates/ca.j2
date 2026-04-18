@@ -1,0 +1,162 @@
+# OpenSSL CA configuration file.
+# https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
+# https://jamielinux.com/docs/openssl-certificate-authority/create-the-intermediate-pair.html
+
+{%- if config.ca is defined %}
+
+[ ca ]
+default_ca                     = {{ config.ca.default_ca }}
+{%- endif -%}
+{% if config.ca_default is defined %}
+
+[ {{ config.ca.default_ca }} ]
+# Directory and file locations.
+dir                            = {{ config.ca_default.dir }}
+certs                          = {{ config.ca_default.certs }}
+crl_dir                        = {{ config.ca_default.crl_dir }}
+new_certs_dir                  = {{ config.ca_default.new_certs_dir }}
+database                       = {{ config.ca_default.database }}
+serial                         = {{ config.ca_default.serial }}
+RANDFILE                       = {{ config.ca_default.random_file }}
+
+# The root key and root certificate.
+private_key                    = {{ config.ca_default.private_key }}
+certificate                    = {{ config.ca_default.certificate }}
+
+# For certificate revocation lists.
+crlnumber                      = {{ config.ca_default.crl_number }}
+crl                            = {{ config.ca_default.crl }}
+crl_extensions                 = {{ config.ca_default.crl_extensions }}
+default_crl_days               = {{ config.ca_default.default_crl_days }}
+
+default_md                     = {{ config.ca_default.default_md }}
+name_opt                       = {{ config.ca_default.name_opt }}
+cert_opt                       = {{ config.ca_default.cert_opt }}
+default_days                   = {{ config.ca_default.default_days }}
+preserve                       = {{ config.ca_default.preserve }}
+policy                         = {{ config.ca_default.policy }}
+{%- endif -%}
+{% if config.policy_strict is defined %}
+
+[ policy_strict ]
+# The root CA should only sign intermediate certificates that match.
+countryName                    = {{ config.policy_strict.country_name }}
+stateOrProvinceName            = {{ config.policy_strict.state_or_province_name }}
+organizationName               = {{ config.policy_strict.organization_name }}
+organizationalUnitName         = {{ config.policy_strict.organizational_unit_name }}
+commonName                     = {{ config.policy_strict.common_name }}
+emailAddress                   = {{ config.policy_strict.email_address }}
+{%- endif -%}
+{% if config.policy_loose is defined %}
+
+[ policy_loose ]
+# Allow the intermediate CA to sign a more diverse range of certificates.
+countryName                    = {{ config.policy_loose.country_name }}
+stateOrProvinceName            = {{ config.policy_loose.state_or_province_name }}
+localityName                   = {{ config.policy_loose.locality_name }}
+organizationName               = {{ config.policy_loose.organization_name }}
+organizationalUnitName         = {{ config.policy_loose.organizational_unit_name }}
+commonName                     = {{ config.policy_loose.common_name }}
+emailAddress                   = {{ config.policy_loose.email_address }}
+{%- endif -%}
+{% if config.req is defined %}
+
+[ req ]
+# Applied when creating / signing certificates.
+default_bits                   = {{ config.req.default_bits }}
+distinguished_name             = {{ config.req.distinguished_name }}
+string_mask                    = {{ config.req.string_mask }}
+default_md                     = {{ config.req.default_md }}
+x509_extensions                = {{ config.req.x509_extensions }}
+{%- endif -%}
+{% if config.req_distinguished_name is defined %}
+
+[ req_distinguished_name ]
+# CSR information required, prompts and defaults.
+countryName                    = {{ config.req_distinguished_name.country_name }}
+stateOrProvinceName            = {{ config.req_distinguished_name.state_or_province_name }}
+localityName                   = {{ config.req_distinguished_name.locality_name }}
+0.organizationName             = {{ config.req_distinguished_name.organization_name }}
+organizationalUnitName         = {{ config.req_distinguished_name.organizational_unit_name }}
+commonName                     = {{ config.req_distinguished_name.common_name }}
+emailAddress                   = {{ config.req_distinguished_name.email_address }}
+
+# Default values for certification generation.
+countryName_default            = {{ config.req_distinguished_name.country_name_default }}
+stateOrProvinceName_default    = {{ config.req_distinguished_name.state_or_province_name_default }}
+localityName_default           = {{ config.req_distinguished_name.locality_name_default }}
+0.organizationName_default     = {{ config.req_distinguished_name.organization_name_default }}
+organizationalUnitName_default = {{ config.req_distinguished_name.organizational_unit_name_default }}
+commonName_default             = {{ config.req_distinguished_name.common_name_default }}
+emailAddress_default           = {{ config.req_distinguished_name.email_address_default }}
+{%- endif -%}
+{% if config.v3_ca is defined %}
+
+[ v3_ca ]
+# Root CA extensions: man x509v3_config '-extensions v3_ca'
+subjectKeyIdentifier           = {{ config.v3_ca.subject_key_identifier }}
+authorityKeyIdentifier         = {{ config.v3_ca.authority_key_identifier }}
+basicConstraints               = {{ config.v3_ca.basic_constraints }}
+keyUsage                       = {{ config.v3_ca.key_usage }}
+{%- endif -%}
+{% if config.v3_intermediate_ca is defined %}
+
+[ v3_intermediate_ca ]
+# Intermediate CA Extensions: man x509v3_config '-extensions v3_intermediate_ca'
+subjectKeyIdentifier           = {{ config.v3_intermediate_ca.subject_key_identifier }}
+authorityKeyIdentifier         = {{ config.v3_intermediate_ca.authority_key_identifier }}
+basicConstraints               = {{ config.v3_intermediate_ca.basic_constraints }}
+keyUsage                       = {{ config.v3_intermediate_ca.key_usage }}
+{%- endif -%}
+{% if config.user_cert is defined %}
+
+[ user_cert ]
+# User certificate extensions: man x509v3_config '-extensions usr_cert'
+basicConstraints               = {{ config.user_cert.basic_constraints }}
+nsCertType                     = {{ config.user_cert.ns_cert_type }}
+nsComment                      = "{{ config.user_cert.ns_comment }}"
+subjectKeyIdentifier           = {{ config.user_cert.subject_key_identifier }}
+authorityKeyIdentifier         = {{ config.user_cert.authority_key_identifier }}
+keyUsage                       = {{ config.user_cert.key_usage }}
+extendedKeyUsage               = {{ config.user_cert.extended_key_usage }}
+{%- endif -%}
+{% if config.machine_cert is defined %}
+
+[ machine_cert ]
+# Machine certificate extensions: man x509v3_config '-extensions machine_cert'
+basicConstraints               = {{ config.machine_cert.basic_constraints }}
+nsCertType                     = {{ config.machine_cert.ns_cert_type }}
+nsComment                      = "{{ config.machine_cert.ns_comment }}"
+subjectKeyIdentifier           = {{ config.machine_cert.subject_key_identifier }}
+authorityKeyIdentifier         = {{ config.machine_cert.authority_key_identifier }}
+keyUsage                       = {{ config.machine_cert.key_usage }}
+extendedKeyUsage               = {{ config.machine_cert.extended_key_usage }}
+{%- endif -%}
+{% if config.server_cert is defined %}
+
+[ server_cert ]
+# Server certificate extensions: man x509v3_config '-extensions server_cert'
+basicConstraints               = {{ config.server_cert.basic_constraints }}
+nsCertType                     = {{ config.server_cert.ns_cert_type }}
+nsComment                      = "{{ config.server_cert.ns_comment }}"
+subjectKeyIdentifier           = {{ config.server_cert.subject_key_identifier }}
+authorityKeyIdentifier         = {{ config.server_cert.authority_key_identifier }}
+keyUsage                       = {{ config.server_cert.key_usage }}
+extendedKeyUsage               = {{ config.server_cert.extended_key_usage }}
+{%- endif -%}
+{% if config.crl_ext is defined %}
+
+[ crl_ext ]
+# Certificate revocation list: man x509v3_config
+authorityKeyIdentifier         = {{ config.crl_ext.authority_key_identifier }}
+{%- endif -%}
+{% if config.ocsp is defined %}
+
+[ ocsp ]
+# OCSP signing certificate extensions: man ocsp
+basicConstraints               = {{ config.ocsp.basic_constraints }}
+subjectKeyIdentifier           = {{ config.ocsp.subject_key_identifier }}
+authorityKeyIdentifier         = {{ config.ocsp.authority_key_identifier }}
+keyUsage                       = {{ config.ocsp.key_usage }}
+extendedKeyUsage               = {{ config.ocsp.extended_key_usage }}
+{%- endif -%}

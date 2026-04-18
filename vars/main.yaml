@@ -1,0 +1,42 @@
+---
+###############################################################################
+# Default CA Package Dependencies
+###############################################################################
+
+ca_default_packages:
+  - 'openssl'
+  - 'rng-tools' # Increase system entropy and verify truly random.
+
+ca_default_virtualization_packages:
+  - 'haveged'   # High entropy for virtual machines.
+
+###############################################################################
+# Default CA User Group
+###############################################################################
+# Default group settings if an CA user is force created.
+
+ca_default_group:
+  name: 'ca'
+  gid:  701
+
+###############################################################################
+# Default CA User Account
+###############################################################################
+# Default user settings if an CA user is force created.
+#
+# Logins are disabled.
+
+ca_default_user:
+  name:            'ca'
+  group:           'ca'
+  groups:
+    - 'ssh'
+  uid:             701
+  shell:           '/bin/bash'
+  home:            '/etc/ca'
+  create_home:     true
+  password:        '!'
+  password_lock:   true
+  update_password: 'always'
+  expires:         -1
+  system:          true

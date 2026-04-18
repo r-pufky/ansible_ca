@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# Backup CA server.
+#
+BASE="{{ ca_repo }}"
+TARGET="{{ ca_backup_dir }}"
+DATE_STAMP=`date +%Y-%m-%d`
+
+mkdir -p ${TARGET}
+tar -czf "${TARGET}/${DATE_STAMP}-ca-server.tar.gz" "${BASE}/" 2>/dev/null
+chown root:root "${TARGET}/${DATE_STAMP}-ca-server.tar.gz"

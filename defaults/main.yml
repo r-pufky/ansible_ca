@@ -1,0 +1,215 @@
+---
+###############################################################################
+# CA (Certificate Authority) Role Configuration
+###############################################################################
+# User that CA will run under. Assumes externally managed.
+ca_user:  'ca'
+ca_group: 'ca'
+
+# Create 'ca' user if not detected? See: vars/main.yml.
+ca_create_user: false
+
+# Certificate Authority site directories.
+ca_dir:        '/etc/ca-example.com'
+ca_repo:       '{{ ca_dir }}/repo'
+ca_repo_root:  '{{ ca_repo }}/root'
+ca_repo_inter: '{{ ca_repo }}/inter'
+ca_repo_pfx:   '{{ ca_repo }}/pfx'
+ca_repo_chain: '{{ ca_repo }}/chain'
+ca_backup_dir: '{{ ca_dir }}/backup'
+
+# Certificate Authority root, intermediate, chain cert locations.
+ca_root_ca:    '{{ ca_repo_root }}/root.ca'
+ca_root_crl:   '{{ ca_repo_root }}/crl/root.crl.pem'
+ca_inter_csr:  '{{ ca_repo_inter }}/csr/inter.csr.pem'
+ca_inter_ca:   '{{ ca_repo_inter }}/inter.ca'
+ca_inter_crl:  '{{ ca_repo_inter }}/crl/inter.crl.pem'
+ca_chain_cert: '{{ ca_repo_chain }}/ca-chain.cert.pem'
+ca_chain_crl:  '{{ ca_repo_chain }}/ca-chain.crl.pem'
+
+###############################################################################
+# CA ROOT root/root.ca
+###############################################################################
+# OpenSSL root CA configuration file.
+# Stripped down to just Root CA functionality.
+#
+# Reference:
+# * https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
+
+ca_root_config:
+  ca:
+    default_ca:                       'ca_default'
+    # GPG encrypted cert password for the 'ca_user'.
+    gpg:                              '{{ ca_dir }}/gpg/ca/ca.root.asc'
+    # Private key material (use vault). Only enforced if set. Use create-new-ca.
+    private_key:                      ''
+    # Certificate (use vault). Only enforced if set; must be updated if cert
+    # expires. Use create-new-ca.
+    certificate:                      ''
+  ca_default:
+    dir:                              '{{ ca_repo_root }}'
+    certs:                            '{{ ca_repo_root }}/certs'
+    crl_dir:                          '{{ ca_repo_root }}/crl'
+    new_certs_dir:                    '{{ ca_repo_root }}/newcerts'
+    database:                         '{{ ca_repo_root }}/index.txt'
+    serial:                           '{{ ca_repo_root }}/serial'
+    random_file:                      '{{ ca_repo_root }}/private/.rand'
+    private_key:                      '{{ ca_repo_root }}/private/root.key.pem'
+    certificate:                      '{{ ca_repo_root }}/certs/root.cert.pem'
+    crl_number:                       '{{ ca_repo_root }}/crlnumber'
+    crl:                              '{{ ca_root_crl }}'
+    crl_extensions:                   'crl_ext'
+    default_crl_days:                 375
+    default_md:                       'sha512'
+    name_opt:                         'ca_default'
+    cert_opt:                         'ca_default'
+    default_days:                     375
+    preserve:                         'no'
+    policy:                           'policy_strict'
+  policy_strict:
+    country_name:                     'match'
+    state_or_province_name:           'match'
+    organization_name:                'match'
+    organizational_unit_name:         'optional'
+    common_name:                      'supplied'
+    email_address:                    'optional'
+  req:
+    default_bits:                     4096
+    distinguished_name:               'req_distinguished_name'
+    string_mask:                      'utf8only'
+    default_md:                       'sha512'
+    x509_extensions:                  'v3_ca'
+  req_distinguished_name:
+    country_name:                     'Country Name (2 letter code)'
+    state_or_province_name:           'State or Province Name'
+    locality_name:                    'Locality Name'
+    organization_name:                'Organization Name'
+    organizational_unit_name:         'Organizational Unit Name'
+    common_name:                      'Common Name'
+    email_address:                    'Email Address'
+    country_name_default:             'XX'
+    state_or_province_name_default:   'XX'
+    locality_name_default:            'XX'
+    organization_name_default:        'example.com'
+    organizational_unit_name_default: 'example.com Certificate Authority'
+    common_name_default:              'example.com Root CA'
+    email_address_default:            'XX'
+  v3_ca:
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid:always,issuer'
+    basic_constraints:                'critical, CA:true'
+    key_usage:                        'critical, digitalSignature, cRLSign, keyCertSign'
+  v3_intermediate_ca:
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid:always,issuer'
+    basic_constraints:                'critical, CA:true, pathlen:0'
+    key_usage:                        'critical, digitalSignature, cRLSign, keyCertSign'
+  crl_ext:
+    authority_key_identifier:         'keyid:always'
+  ocsp:
+    basic_constraints:                'CA:FALSE'
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid,issuer'
+    key_usage:                        'critical, digitalSignature'
+    extended_key_usage:               'critical, OCSPSigning'
+
+###############################################################################
+# CA INTERMEDIATE inter/inter.ca
+###############################################################################
+# OpenSSL intermediate CA configuration file.
+# Stripped down to just Intermediate CA functionality.
+#
+# Reference:
+# * https://jamielinux.com/docs/openssl-certificate-authority/create-the-intermediate-pair.html
+
+ca_inter_config:
+  ca:
+    default_ca:                       'ca_default'
+    # GPG encrypted cert password for the 'ca_user'.
+    gpg:                              '{{ ca_dir }}/gpg/ca/ca.inter.asc'
+    # Private key material (use vault). Only enforced if set. Use create-new-ca.
+    private_key:                      ''
+    # Certificate (use vault). Only enforced if set; must be updated if cert
+    # expires. Use create-new-ca.
+    certificate:                      ''
+  ca_default:
+    dir:                              '{{ ca_repo_inter }}'
+    certs:                            '{{ ca_repo_inter }}/certs'
+    crl_dir:                          '{{ ca_repo_inter }}/crl'
+    new_certs_dir:                    '{{ ca_repo_inter }}/newcerts'
+    database:                         '{{ ca_repo_inter }}/index.txt'
+    serial:                           '{{ ca_repo_inter }}/serial'
+    random_file:                      '{{ ca_repo_inter }}/private/.rand'
+    private_key:                      '{{ ca_repo_inter }}/private/inter.key.pem'
+    certificate:                      '{{ ca_repo_inter }}/certs/inter.cert.pem'
+    crl_number:                       '{{ ca_repo_inter }}/crlnumber'
+    crl:                              '{{ ca_inter_crl }}'
+    crl_extensions:                   'crl_ext'
+    default_crl_days:                 375
+    default_md:                       'sha512'
+    name_opt:                         'ca_default'
+    cert_opt:                         'ca_default'
+    default_days:                     375
+    preserve:                         'no'
+    policy:                           'policy_loose'
+  policy_loose:
+    country_name:                     'optional'
+    state_or_province_name:           'optional'
+    locality_name:                    'optional'
+    organization_name:                'optional'
+    organizational_unit_name:         'optional'
+    common_name:                      'supplied'
+    email_address:                    'optional'
+  req:
+    default_bits:                     4096
+    distinguished_name:               'req_distinguished_name'
+    string_mask:                      'utf8only'
+    default_md:                       'sha512'
+    x509_extensions:                  'machine_cert'
+  req_distinguished_name:
+    country_name:                     'Country Name (2 letter code)'
+    state_or_province_name:           'State or Province Name'
+    locality_name:                    'Locality Name'
+    organization_name:                'Organization Name'
+    organizational_unit_name:         'Organizational Unit Name'
+    common_name:                      'Common Name'
+    email_address:                    'Email Address'
+    country_name_default:             'XX'
+    state_or_province_name_default:   'XX'
+    locality_name_default:            'XX'
+    organization_name_default:        'example.com'
+    organizational_unit_name_default: 'example.com Certificate Authority'
+    common_name_default:              'example.com Intermediate CA'
+    email_address_default:            'XX'
+  user_cert:
+    basic_constraints:                'CA:FALSE'
+    ns_cert_type:                     'client, email'
+    ns_comment:                       'OpenSSL Generated User Certificate'
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid,issuer'
+    key_usage:                        'critical, nonRepudiation, digitalSignature, keyEncipherment'
+    extended_key_usage:               'clientAuth, emailProtection'
+  machine_cert:
+    basic_constraints:                'CA:FALSE'
+    ns_cert_type:                     'client'
+    ns_comment:                       'OpenSSL Generated Machine Certificate'
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid,issuer'
+    key_usage:                        'critical, nonRepudiation, digitalSignature, keyEncipherment'
+    extended_key_usage:               'clientAuth'
+  server_cert:
+    basic_constraints:                'CA:FALSE'
+    ns_cert_type:                     'server'
+    ns_comment:                       'OpenSSL Generated Server Certificate'
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid,issuer:always'
+    key_usage:                        'critical, digitalSignature, keyEncipherment'
+    extended_key_usage:               'serverAuth'
+  crl_ext:
+    authority_key_identifier:         'keyid:always'
+  ocsp:
+    basic_constraints:                'CA:FALSE'
+    subject_key_identifier:           'hash'
+    authority_key_identifier:         'keyid,issuer'
+    key_usage:                        'critical, digitalSignature'
+    extended_key_usage:               'critical, OCSPSigning'

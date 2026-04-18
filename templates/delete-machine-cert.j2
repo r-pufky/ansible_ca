@@ -1,0 +1,35 @@
+#!/bin/bash
+# Delete machine certificates and CSR.
+CA_DIR="{{ ca_repo }}"
+
+set -e
+
+if [ -z "$1" ]; then
+    echo "$(basename "$0") [date]-[machine id]"
+    exit 1
+else
+  MACHINE=$1
+  MACHINE_KEY="${CA_DIR}/inter/private/${MACHINE}.key.pem"
+  MACHINE_CSR="${CA_DIR}/inter/csr/${MACHINE}.csr.pem"
+  MACHINE_CERT="${CA_DIR}/inter/certs/${MACHINE}.cert.pem"
+  MACHINE_PFX="${CA_DIR}/pfx/${MACHINE}.pfx"
+fi
+
+echo -e -n "\n${MACHINE} Expiry: "
+openssl x509 -enddate -noout -in ${MACHINE_CERT}
+
+echo '██████████▶'
+echo -e '\nOnly delete certs that have NEVER been used, or are EXPIRED.'
+echo -e 'Issued/Revoked certs should NEVER be deleted (until expired).\n'
+read -n 1 -p "Press Y to delete, any other key to abort: " READ_CONTINUE
+if [ "${READ_CONTINUE}" != 'Y' ]; then
+  echo -e '\n\nAborting.'
+  exit 2
+fi
+
+echo -e "\nDeleting ${MACHINE} certificates ..."
+rm -fv "${MACHINE_KEY}"
+rm -fv "${MACHINE_CSR}"
+rm -fv "${MACHINE_CERT}"
+rm -fv "${MACHINE_PFX}"
+echo 'Done.'
